@@ -16,7 +16,8 @@
 
   NB.DEFAULT_SETTINGS = {
     theme: 'cozy',
-    pageWidth: 820,
+    pageWidth: 560,
+    pageHeight: 760,
     defaultPaper: 'lined',
     defaultPageColor: '#fffaf0',
     textFont: NB.FONTS[1].css,
@@ -28,7 +29,7 @@
     smoothing: true,
     holdStraight: true,
     showDate: true,
-    autoExtend: true,
+    autoExtend: false,
     showRings: true,
     inspectorOpen: true,
   };
@@ -146,13 +147,13 @@
   NB.newPage = function (opts = {}) {
     const S = NB.state ? NB.state.settings : NB.DEFAULT_SETTINGS;
     return Object.assign(
-      { id: uid('p'), title: '', paper: S.defaultPaper, color: S.defaultPageColor, created: Date.now(), updated: Date.now(), h: 1100, items: [], strokes: [] },
+      { id: uid('p'), title: '', paper: S.defaultPaper, color: S.defaultPageColor, created: Date.now(), updated: Date.now(), h: S.pageHeight || 760, items: [], strokes: [] },
       opts
     );
   };
 
   NB.newSection = function (name, color) {
-    return { id: uid('s'), name, color: color || NB.SECTION_COLORS[Math.floor(Math.random() * NB.SECTION_COLORS.length)], pages: [], board: NB.newPage({ paper: 'cork', color: '#c8975f', title: name, h: 900 }), last: null };
+    return { id: uid('s'), name, color: color || NB.SECTION_COLORS[Math.floor(Math.random() * NB.SECTION_COLORS.length)], pages: [], board: NB.newPage({ paper: 'cork', color: '#c8975f', title: name }), last: null };
   };
 
   NB.newNotebook = function (o = {}) {
@@ -221,18 +222,49 @@
       all.forEach(([k, v]) => (NB.assets[k] = v));
     } catch (e) { /* ignore */ }
     if (!st || !st.notebooks) {
-      st = { version: 1, settings: NB.clone(NB.DEFAULT_SETTINGS), notebooks: [], ui: {} };
+      st = { version: 2, settings: NB.clone(NB.DEFAULT_SETTINGS), notebooks: [], ui: {} };
       NB.state = st;
       NB.makeStarter();
     } else {
       st.settings = Object.assign({}, NB.DEFAULT_SETTINGS, st.settings || {});
       st.ui = st.ui || {};
       NB.state = st;
+      if ((st.version || 1) < 2) NB.migrateV2(st);
     }
     // drop orphaned images
     const used = NB.usedAssets();
     for (const id of Object.keys(NB.assets)) if (!used.has(id)) { delete NB.assets[id]; NB.storage.delAsset(id); }
     return st;
+  };
+
+  /** v1 had one tall scrolling page (820 wide); v2 is a fixed-size two-page spread. */
+  NB.fit = function (items, kx = 0.56, ky = 0.66, fs = 0.8) {
+    items.forEach((it) => {
+      const square = it.type === 'sticker' || it.type === 'deco' || it.type === 'image';
+      it.x = Math.round(36 + it.x * kx);
+      it.y = Math.round(22 + it.y * ky);
+      if (it.type !== 'deco') { it.w = Math.round(it.w * kx); it.h = Math.round(it.h * (square ? kx : ky)); }
+      if (it.size) it.size = Math.max(12, Math.round(it.size * fs));
+    });
+    return items;
+  };
+
+  NB.migrateV2 = function (st) {
+    st.version = 2;
+    st.settings.pageWidth = 560;
+    st.settings.pageHeight = 760;
+    st.settings.autoExtend = false;
+    for (const nb of st.notebooks)
+      for (const sec of nb.sections)
+        for (const pg of [sec.board, ...sec.pages]) {
+          if (pg.migrated) continue;
+          NB.fit(pg.items);
+          pg.strokes.forEach((s) => s.pts.forEach((p) => { p[0] = Math.round((36 + p[0] * 0.56) * 10) / 10; p[1] = Math.round((22 + p[1] * 0.66) * 10) / 10; }));
+          pg.h = 760;
+          pg.migrated = true;
+        }
+    st.ui.spread = 0;
+    delete st.ui.page;
   };
 
   /* ---------------- lookups ---------------- */
@@ -242,12 +274,9 @@
     const nb = NB.currentNotebook();
     return nb && (nb.sections.find((s) => s.id === NB.state.ui.sec) || nb.sections[0]);
   };
-  NB.currentPage = () => {
-    const sec = NB.currentSection();
-    if (!sec) return null;
-    if (NB.state.ui.page === 'board') return sec.board;
-    return sec.pages.find((p) => p.id === NB.state.ui.page) || null;
-  };
+  /** The ordered leaves of a section: its pin-board, then its pages. A spread shows two of them. */
+  NB.leaves = (sec) => [sec.board, ...sec.pages];
+  NB.currentPage = () => (NB.editor && NB.editor.page()) || null;
 
   /* ---------------- import / export ---------------- */
   NB.exportData = function (notebookIds) {
@@ -309,27 +338,29 @@
     life.pages.push(NB.newPage({ title: 'This week', paper: 'grid' }));
 
     const board = home.board;
+    const st = (o) => Object.assign({ id: uid('i'), type: 'sticky', font: NB.FONTS[0].css, size: 22, textColor: '' }, o);
     board.items = [
-      { id: uid('i'), type: 'sticky', x: 70, y: 90, w: 210, h: 170, rot: -3, color: '#fff2a8', html: 'Section boards are for the <b>big picture</b> – pin sticky notes here!', font: NB.FONTS[0].css, size: 26, textColor: '', style: 'pin' },
-      { id: uid('i'), type: 'sticky', x: 330, y: 150, w: 200, h: 160, rot: 2.5, color: '#ffc2d1', html: 'Goals for this section 🎯', font: NB.FONTS[0].css, size: 26, textColor: '', style: 'tape' },
-      { id: uid('i'), type: 'sticky', x: 580, y: 80, w: 190, h: 160, rot: -1.5, color: '#bfe6ff', html: 'Drag, resize and rotate me', font: NB.FONTS[0].css, size: 26, textColor: '', style: 'curl' },
+      st({ x: 44, y: 96, w: 190, h: 150, rot: -3, color: '#fff2a8', html: 'Section boards are for the <b>big picture</b> – pin sticky notes here!', style: 'pin' }),
+      st({ x: 270, y: 120, w: 190, h: 140, rot: 2.5, color: '#ffc2d1', html: 'Goals for this section 🎯', style: 'tape' }),
+      st({ x: 70, y: 300, w: 180, h: 130, rot: -1.5, color: '#bfe6ff', html: 'Drag, resize and rotate me', style: 'curl' }),
     ];
     NB.state.notebooks.push(nb);
-    NB.state.ui = { nb: nb.id, sec: home.id, page: welcome.id, view: 'shelf' };
+    NB.state.ui = { nb: nb.id, sec: home.id, spread: 0, view: 'shelf' };
   };
 
+  /** Welcome page, laid out directly for a 560 x 760 page. */
   NB.starterItems = function () {
     const F = NB.FONTS;
     const mk = (o) => Object.assign({ id: uid('i'), rot: 0 }, o);
     return [
-      mk({ type: 'text', x: 90, y: 120, w: 520, h: 140, html: 'Hello! 👋 This is a <b>movable text box</b>.<br>Click it twice to edit, drag it by its edge, resize it with the handles, rotate it with the round handle.', font: F[1].css, size: 22, color: '', align: 'left', bg: '', border: false }),
-      mk({ type: 'sticky', x: 620, y: 110, w: 170, h: 150, rot: 3, color: '#fff2a8', html: 'Sticky notes work on pages <i>and</i> on section boards ✨', font: F[0].css, size: 25, textColor: '', style: 'curl' }),
-      mk({ type: 'todo', x: 90, y: 320, w: 300, h: 150, color: '#ffffff', font: F[1].css, size: 20, title: 'Try these', items: [{ t: 'Add an image (🖼 tool)', d: false }, { t: 'Draw with a pen or tablet ✒️', d: false }, { t: 'Decorate with stickers & clips 📎', d: false }, { t: 'Make a new notebook', d: false }] }),
-      mk({ type: 'deco', kind: 'clip-red', x: 300, y: 296, w: 34, h: 80, rot: 12 }),
-      mk({ type: 'sticker', glyph: '🌿', x: 440, y: 330, w: 90, h: 90, rot: -8 }),
-      mk({ type: 'sticker', glyph: '☕', x: 540, y: 350, w: 90, h: 90, rot: 6 }),
-      mk({ type: 'deco', kind: 'tape-stripe', x: 600, y: 90, w: 120, h: 32, rot: -6 }),
-      mk({ type: 'shape', kind: 'round', x: 90, y: 640, w: 400, h: 90, fill: '#e9f3ea', stroke: '#5f7f5b', sw: 3, dash: true, label: 'Shapes can hold text too', font: F[1].css, size: 22, textColor: '#2f4a2c' }),
+      mk({ type: 'text', x: 60, y: 92, w: 440, h: 100, html: 'Hello! 👋 This is a <b>movable text box</b>.<br>Double-click to type, drag its edge to move it, use the handles to resize and the round one to rotate.', font: F[1].css, size: 18, textColor: '', align: 'left', bg: '', border: false }),
+      mk({ type: 'todo', x: 60, y: 232, w: 250, h: 176, color: '#ffffff', font: F[1].css, size: 17, title: 'Try these', items: [{ t: 'Add a picture 🖼', d: false }, { t: 'Draw with a pen ✒️', d: false }, { t: 'Stick on a sticker 📎', d: false }, { t: 'Turn the page ▶', d: false }] }),
+      mk({ type: 'deco', kind: 'clip-red', x: 250, y: 212, w: 30, h: 74, rot: 10 }),
+      mk({ type: 'sticky', x: 340, y: 232, w: 150, h: 128, rot: 3, color: '#fff2a8', html: 'Sticky notes work on pages <i>and</i> on section boards ✨', font: F[0].css, size: 21, textColor: '', style: 'curl' }),
+      mk({ type: 'deco', kind: 'tape-stripe', x: 352, y: 222, w: 100, h: 26, rot: -6 }),
+      mk({ type: 'sticker', glyph: '🌿', x: 350, y: 392, w: 72, h: 72, rot: -8 }),
+      mk({ type: 'sticker', glyph: '☕', x: 426, y: 402, w: 66, h: 66, rot: 6 }),
+      mk({ type: 'shape', kind: 'round', x: 60, y: 450, w: 270, h: 72, fill: '#e9f3ea', stroke: '#5f7f5b', sw: 3, dash: true, label: 'Shapes can hold text too', font: F[1].css, size: 18, textColor: '#2f4a2c' }),
     ];
   };
 })();

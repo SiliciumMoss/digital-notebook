@@ -73,7 +73,7 @@
       build: () => [
         mk('todo', { x: 90, y: 120, w: 380, h: 340, title: 'Must do', color: '#ffffff', items: Array.from({ length: 6 }, () => ({ t: '', d: false })) }),
         mk('todo', { x: 500, y: 120, w: 260, h: 240, title: 'Nice to do', color: '#e9f3ea', items: Array.from({ length: 4 }, () => ({ t: '', d: false })) }),
-        mk('deco', { kind: 'clip-red', x: 120, y: 94, w: 34, h: 84, rot: 6 }),
+        mk('deco', { kind: 'clip-red', x: 420, y: 100, w: 34, h: 84, rot: 6 }),
         mk('deco', { kind: 'pin-blue', x: 610, y: 98, w: 34, h: 52 }),
       ],
     },
@@ -101,4 +101,5 @@
       ],
     },
   ];
+  NB.TEMPLATES.forEach((t) => { const b = t.build; t.build = () => NB.fit(b()); });
 })();

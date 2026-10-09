@@ -2,6 +2,9 @@
 (function () {
   const NB = (window.NB = window.NB || {});
 
+  /** the editor of the page being worked on (the left or right side of the open spread) */
+  NB.E = new Proxy({}, { get: (_, k) => (NB.editor ? NB.editor[k] : undefined) });
+
   NB.uid = (p = 'x') => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3);
   NB.clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   NB.$ = (s, r = document) => r.querySelector(s);

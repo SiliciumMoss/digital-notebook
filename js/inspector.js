@@ -2,7 +2,7 @@
 (function () {
   const NB = window.NB;
   const { h, clamp } = NB;
-  const E = NB.editor;
+  const E = NB.E;
 
   const ICON = { text: '🅣 Text box', sticky: '📝 Sticky note', image: '🖼 Image', shape: '◻ Shape', sticker: '😊 Sticker', deco: '📎 Decoration', todo: '☑ Checklist' };
 
@@ -165,7 +165,7 @@
     } else {
       out.push(group('Page paper', h('div', { class: 'paper-grid' }, PAPERS.map(([k, l]) => h('button', { class: 'paper-opt paper-' + k + (page.paper === k ? ' on' : ''), onClick: () => setPage({ paper: k }) }, h('span', null, l))))), row('Colour', swatchRow(NB.PAGE_COLORS, page.color, (c) => setPage({ color: c }))));
     }
-    out.push(group('Page', row('', btn('⤓ Add more space', () => E.extendPage(500)), btn('🧽 Clear all ink', async () => { if (page.strokes.length && (await NB.confirm('Erase every pen stroke on this page?', 'Clear ink'))) { page.strokes = []; E.ink().redraw(); E.commit(); } })), !ctx.isBoard ? row('', btn('⧉ Duplicate page', () => NB.app.duplicatePage()), btn('🖨 Print / PDF', () => NB.app.printPage())) : null));
+    out.push(group('Page', row('', btn('🧽 Clear all ink', async () => { if (page.strokes.length && (await NB.confirm('Erase every pen stroke on this page?', 'Clear ink'))) { page.strokes = []; E.ink().redraw(); E.commit(); } })), !ctx.isBoard ? row('', btn('⧉ Duplicate page', () => NB.app.duplicatePage()), btn('✂ Tear out page', () => NB.app.deleteCurrentPage()), btn('🖨 Print / PDF', () => NB.app.printPage())) : null));
     return out;
   }
 

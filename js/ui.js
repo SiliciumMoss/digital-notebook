@@ -2,7 +2,7 @@
 (function () {
   const NB = window.NB;
   const { h, $, $$ } = NB;
-  const E = NB.editor;
+  const E = NB.E;
   const S = () => NB.state.settings;
 
   /* ====================================================================
@@ -54,13 +54,11 @@
 
   NB.setTool = function (name) {
     if (['image', 'stickers'].includes(name)) return;
-    if (name !== 'select' && E.isEditing()) E.stopEdit();
+    if (name !== 'select') (NB.editors || []).forEach((ed) => ed.isEditing() && ed.stopEdit());
     NB.tool.name = name;
     $$('#toolbar .tool').forEach((b) => b.classList.toggle('on', b.dataset.tool === name));
     document.body.dataset.tool = name;
-    const ink = E.ink();
-    if (ink) ink.updateTool();
-    if (name !== 'select' && !NB.INK_TOOLS.includes(name)) E.select([]);
+    (NB.editors || []).forEach((ed) => { if (ed.ink()) ed.ink().updateTool(); if (name !== 'select' && !NB.INK_TOOLS.includes(name)) ed.select([]); });
     renderDrawBar();
   };
 
@@ -356,21 +354,22 @@
     fontSel.addEventListener('change', () => { S().textFont = fontSel.value; NB.markDirty(); });
     const sizeIn = h('input', { type: 'number', class: 'num', min: 10, max: 60, value: S().textSize });
     sizeIn.addEventListener('change', () => { S().textSize = Math.max(10, Math.min(60, +sizeIn.value || 20)); NB.markDirty(); });
-    const widthR = h('input', { type: 'range', min: 600, max: 1200, step: 10, value: S().pageWidth });
-    const widthOut = h('span', { class: 'range-val' }, S().pageWidth + 'px');
-    widthR.addEventListener('input', () => widthOut.textContent = widthR.value + 'px');
-    widthR.addEventListener('change', () => { S().pageWidth = +widthR.value; NB.markDirty(); NB.app.relayout(); });
     const gridIn = h('input', { type: 'number', class: 'num', min: 5, max: 100, value: S().grid });
     gridIn.addEventListener('change', () => { S().grid = Math.max(5, Math.min(100, +gridIn.value || 20)); NB.markDirty(); });
     const pageCol = h('div', { class: 'swatch-row' }, NB.PAGE_COLORS.map((c) => h('button', { class: 'swatch' + (S().defaultPageColor === c ? ' on' : ''), style: { background: c }, onClick: (e) => { S().defaultPageColor = c; NB.markDirty(); $$('.swatch', pageCol).forEach((s) => s.classList.remove('on')); e.currentTarget.classList.add('on'); } })));
 
+    const sizeR = h('input', { type: 'range', min: 420, max: 760, step: 10, value: S().pageWidth });
+    const sizeOut = h('span', { class: 'range-val' }, S().pageWidth + ' × ' + S().pageHeight);
+    sizeR.addEventListener('input', () => { sizeOut.textContent = sizeR.value + ' × ' + Math.round(sizeR.value * 1.357); });
+    sizeR.addEventListener('change', () => { S().pageWidth = +sizeR.value; NB.app.relayout(); });
+    const pageSize = h('span', { class: 'set-ctl' }, sizeR, sizeOut);
     const storage = h('div', { class: 'set-ctl' });
     body.append(
       group('Look & feel', themeCards),
-      group('New pages', row('Default paper', paperSel), row('Default page colour', pageCol), row('Page width', [widthR, widthOut], 'Applies to every page')),
+      group('New pages', row('Default paper', paperSel), row('Default page colour', pageCol), ),
       group('Writing', row('Default font', fontSel), row('Default text size', sizeIn)),
       group('Stylus & tablet', row('Pressure sensitivity', check('pressure', NB.renderDrawBar), 'Line width follows how hard you press'), row('Smooth lines', check('smoothing'), 'Steadier handwriting'), row('Hold to straighten', check('holdStraight'), 'Pause at the end of a stroke to make a straight line'), row('Stylus only (palm rejection)', check('penOnly', NB.renderDrawBar), 'Fingers scroll the page instead of drawing')),
-      group('Layout', row('Snap to grid', check('snap')), row('Grid size', gridIn), row('Show page date', check('showDate', () => NB.app.reopenPage())), row('Show binder rings / spiral', check('showRings', () => NB.app.relayout())), row('Grow page automatically', check('autoExtend'))),
+      group('Layout', row('Snap to grid', check('snap')), row('Grid size', gridIn), row('Show page date', check('showDate', () => NB.app.reopenPage())), row('Show binder rings / spiral', check('showRings', () => NB.app.relayout())), row('Page size', pageSize, 'Width of one page – height follows')),
       group('Your data', h('p', { class: 'hint' }, window.native ? 'Notebooks are saved automatically on this computer as you work.' : 'Saved automatically in this browser profile.'), h('div', { class: 'set-actions' }, h('button', { class: 'btn', onClick: () => NB.app.exportNotebook() }, '📤 Backup everything'), h('button', { class: 'btn', onClick: () => NB.app.importFile() }, '📥 Import backup'), window.native ? h('button', { class: 'btn', onClick: () => window.native.reveal() }, '📂 Open data folder') : null, h('button', { class: 'btn danger', onClick: async () => { if (await NB.confirm('This permanently deletes ALL notebooks on this computer. Make a backup first!', 'Erase everything')) { await NB.storage.clearAll(); location.reload(); } } }, '🗑 Erase everything')), storage)
     );
     NB.modal({ title: 'Settings', body, wide: true, buttons: [{ label: 'Done', primary: true }], cls: 'settings-modal' });

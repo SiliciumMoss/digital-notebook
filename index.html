@@ -29,10 +29,18 @@
   <!-- ===== Notebook ===== -->
   <section id="nb-view" class="view hidden">
     <header id="topbar">
-      <button class="icon-btn" id="btn-shelf" title="Back to bookshelf">📚</button>
+      <button class="icon-btn" id="btn-shelf" title="Close the notebook and put it back on the shelf">📕</button>
       <button class="icon-btn" id="btn-pages-toggle" title="Show / hide pages list">☰</button>
       <input id="nb-title" class="nb-title" spellcheck="false" title="Notebook name">
       <span class="save-state" data-state="saved">✓ Saved</span>
+      <span class="spacer"></span>
+      <div class="pager">
+        <button class="icon-btn" id="pg-first" title="First pages">⏮</button>
+        <button class="icon-btn" id="pg-prev" title="Previous pages (PageUp)">◀</button>
+        <span id="pager-label" title="Pages on show">–</span>
+        <button class="icon-btn" id="pg-next" title="Turn the page (PageDown)">▶</button>
+        <button class="icon-btn" id="pg-last" title="Last pages">⏭</button>
+      </div>
       <span class="spacer"></span>
       <button class="icon-btn" id="btn-undo" title="Undo (Ctrl+Z)">↶</button>
       <button class="icon-btn" id="btn-redo" title="Redo (Ctrl+Y)">↷</button>

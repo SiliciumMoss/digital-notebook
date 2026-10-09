@@ -1,6 +1,6 @@
 # 📓 Cozy Notebook
 
-A cozy **desktop** notebook app (Windows · macOS · Linux, built on Electron). Notebooks live on a bookshelf, open like real ring-binders, and everything is saved automatically as files on your computer – no account, no cloud.
+A cozy **desktop** notebook app (Windows · macOS · Linux, built on Electron). Notebooks live on a bookshelf and behave like real books: the cover swings open, you see **two facing pages** with the binding running down the middle, and you **turn the pages** (click or drag a bottom corner, ◀ ▶, PageUp/PageDown). Everything is saved automatically as files on your computer – no account, no cloud.
 
 ## Run it
 
@@ -15,8 +15,9 @@ Build an installer for your OS: `npm run dist` (or `dist:win` / `dist:mac` / `di
 
 | | |
 |---|---|
+| **The book** | Open spread (left + right page), 3D page-turn, cover opening/closing, paper thickness on both sides, page numbers, rings / spiral / stitching through the gutter, coloured divider tabs on the edge |
 | **Notebooks** | Bookshelf with custom covers (colour, texture, emoji) and binding: 3-ring binder, 6-ring planner, spiral, stitched, plain |
-| **Sections & pages** | Coloured divider tabs, drag-to-reorder pages, move pages between sections, 9 page templates (journal, weekly planner, meeting notes, recipe, …) |
+| **Sections & pages** | Each section's first left page is its cork pin-board; pages after it. Blank pages wait past the last page, tear pages out, reorder in the page list (☰), 9 templates (journal, weekly planner, meeting notes, recipe, …) |
 | **Sticky notes** | On every page *and* on each section's pin-board (cork board) – curled, pinned or taped styles, 10 colours |
 | **Movable text boxes** | OneNote-style: click anywhere, type, drag, resize, rotate. Rich text: fonts, sizes, colours, highlight, lists, alignment |
 | **Images** | Insert / drag-drop / paste. Crop (with ratios), rotate, flip, filters (brightness, contrast, saturation, hue, blur, B&W, sepia…), presets, rounded corners, borders, shadow, polaroid & taped frames |

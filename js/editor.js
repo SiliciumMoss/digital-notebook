@@ -1,14 +1,13 @@
 /* Cozy Notebook – page editor: selection, move/resize/rotate, text editing, history, clipboard */
-(function () {
-  const NB = window.NB;
+NB.makeEditor = function (side) {
   const { h, uid, clamp } = NB;
 
-  const E = (NB.editor = {});
+  const E = { side };
   const CLIP_MARK = '[[cozy-notebook-items]]';
   const TEXTLIKE = new Set(['text', 'sticky', 'shape']);
 
   let page = null, ctx = null, pageEl = null, layer = null, ink = null;
-  let refs = { workspace: null, sizer: null, book: null };
+  let refs = { workspace: null };
   let scale = 1;
   let selected = [];
   const els = new Map();
@@ -48,15 +47,6 @@
       const c = editableOf(editing);
       if (sel.rangeCount && c && c.contains(sel.anchorNode)) savedRange = sel.getRangeAt(0).cloneRange();
     });
-    refs.workspace.addEventListener('dragover', (e) => { if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault(); });
-    refs.workspace.addEventListener('drop', async (e) => {
-      const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []).filter((f) => f.type.startsWith('image/'));
-      if (!files.length || !page) return;
-      e.preventDefault();
-      const pt = toPage(e);
-      let i = 0;
-      for (const f of files) await E.addImageFile(f, [pt[0] + i * 24, pt[1] + i * 24]), i++;
-    });
   };
 
   /* ---------------- coordinates / layout ---------------- */
@@ -76,37 +66,23 @@
   };
 
   E.layout = function () {
-    if (!page) return;
-    const W = S().pageWidth;
-    const bookW = 34 + W + 100;
-    refs.sizer.style.width = bookW * scale + 'px';
-    refs.sizer.style.height = (page.h + 70) * scale + 'px';
-    refs.book.style.width = bookW + 'px';
-    refs.book.style.height = page.h + 70 + 'px';
-    refs.book.style.transform = `scale(${scale})`;
-    refs.book.style.setProperty('--inv', String(1 / scale));
-    refs.book.style.setProperty('--pw', W + 'px');
+    if (!page || !pageEl) return;
+    page.h = S().pageHeight;
     pageEl.style.height = page.h + 'px';
-    pageEl.style.width = W + 'px';
-    E.hooks.layout();
+    pageEl.style.width = S().pageWidth + 'px';
   };
 
   E.setScale = function (s) {
-    scale = clamp(s, 0.3, 3);
-    E.layout();
+    scale = clamp(s, 0.2, 3);
+    refs.workspace && pageEl && pageEl.style.setProperty('--inv', String(1 / scale));
     clearTimeout(E._rz);
     E._rz = setTimeout(() => ink && ink.resize(), 120);
     return scale;
   };
 
-  E.extendPage = function (by = 500) {
-    page.h += by;
-    E.layout();
-    ink.resize();
-    E.commit();
-  };
 
   function ensureRoom() {
+    return; // fixed-size pages, like paper
     if (!S().autoExtend) return;
     let bottom = 0;
     for (const it of page.items) {
@@ -131,6 +107,7 @@
     selected = [];
     els.clear();
     drag = null;
+    pg.h = S().pageHeight;
     hist = { undo: [], redo: [], last: snap() };
 
     pageEl = h('div', { class: 'page' });
@@ -181,6 +158,15 @@
     E.hooks.selection();
     E.hooks.history();
     return pageEl;
+  };
+
+  /** Unmount the page (an empty leaf is showing). */
+  E.clear = function () {
+    E.stopEdit(true);
+    page = ctx = pageEl = layer = ink = null;
+    selected = [];
+    els.clear();
+    hist = { undo: [], redo: [], last: '' };
   };
 
   E.applyPageStyle = function () {
@@ -837,7 +823,7 @@
   }
 
   function onKey(e) {
-    if (!page || !refs.book.offsetParent) return;
+    if (!page || NB.editor !== E || !refs.workspace.offsetParent) return;
     const mod = e.ctrlKey || e.metaKey;
     if (e.key === 'Escape') {
       if (editing) { E.stopEdit(); e.preventDefault(); return; }
@@ -882,7 +868,7 @@
   }
 
   function onCopy(e) {
-    if (!page || typing(e) || !selected.length) return;
+    if (!page || NB.editor !== E || typing(e) || !selected.length) return;
     if (NB.tool.name === 'lasso') return;
     const sel = E.selection();
     NB.clip = NB.clone(sel);
@@ -893,7 +879,7 @@
   }
 
   async function onPaste(e) {
-    if (!page || !refs.book.offsetParent) return;
+    if (!page || NB.editor !== E || !refs.workspace.offsetParent) return;
     if (typing(e)) return;
     const cd = e.clipboardData;
     if (!cd) return;
@@ -913,4 +899,5 @@
   }
 
   E.clearSelectionIfDesk = () => { if (editing) E.stopEdit(); E.select([]); };
-})();
+  return E;
+};
